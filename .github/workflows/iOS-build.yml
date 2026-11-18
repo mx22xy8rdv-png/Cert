@@ -4,44 +4,62 @@ name: iCert7 IPA Build
 on:
   workflow_dispatch:
   push:
-    branches: [main]
+    branches:
+      - main
 
 jobs:
   build:
     runs-on: macos-15
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
 
       - name: Install XcodeGen
         run: brew install xcodegen
 
-      - name: Generate project
+      - name: Generate Xcode project
         run: xcodegen generate
 
-           - name: Upload IPA file
+      - name: Build iOS app
+        run: |
+          xcodebuild \
+            -project iCert7.xcodeproj \
+            -scheme iCert7 \
+            -configuration Release \
+            -sdk iphoneos \
+            -derivedDataPath build \
+            CODE_SIGNING_ALLOWED=NO
+
+      - name: Create unsigned IPA
+        run: |
+          APP="build/Build/Products/Release-iphoneos/iCert7.app"
+
+          if [ ! -d "$APP" ]; then
+            echo "ERROR: iCert7.app not found"
+            exit 1
+          fi
+
+          rm -rf Payload iCert7.ipa
+          mkdir -p Payload
+
+          cp -R "$APP" Payload/iCert7.app
+
+          /usr/bin/zip -qry iCert7.ipa Payload
+
+          if [ ! -f iCert7.ipa ]; then
+            echo "ERROR: IPA was not created"
+            exit 1
+          fi
+
+          echo "IPA successfully created:"
+          ls -lh iCert7.ipa
+
+      - name: Upload IPA file
         uses: actions/upload-artifact@v4
         with:
           name: iCert7-IPA
           path: iCert7.ipa
           archive: false
-          if-no-files-found: error\
-            CODE_SIGNING_ALLOWED=NO
-
-      - name: Package IPA
-        run: |
-          APP="build/Build/Products/Release-iphoneos/iCert7.app"
-          test -d "$APP"
-          mkdir -p Payload
-          cp -R "$APP" Payload/iCert7.app
-          /usr/bin/zip -qry iCert7.ipa Payload
-          test -f iCert7.ipa
-          unzip -l iCert7.ipa
-
-      - name: Upload IPA
-        uses: actions/upload-artifact@v4
-        with:
-          name: iCert7-IPA
-          path: iCert7.ipa
           if-no-files-found: error
           retention-days: 7
