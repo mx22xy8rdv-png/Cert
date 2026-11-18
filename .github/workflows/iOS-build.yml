@@ -1,5 +1,4 @@
 
-
 name: iCert7 IPA Build
 
 on:
@@ -30,15 +29,20 @@ jobs:
             -derivedDataPath build \
             CODE_SIGNING_ALLOWED=NO
 
-      - name: Create IPA
+      - name: Package IPA
         run: |
+          APP="build/Build/Products/Release-iphoneos/iCert7.app"
+          test -d "$APP"
           mkdir -p Payload
-          cp -R build/Build/Products/Release-iphoneos/iCert7.app Payload/
-          zip -r iCert7.ipa Payload
+          cp -R "$APP" Payload/iCert7.app
+          /usr/bin/zip -qry iCert7.ipa Payload
+          test -f iCert7.ipa
+          unzip -l iCert7.ipa
 
       - name: Upload IPA
         uses: actions/upload-artifact@v4
         with:
           name: iCert7-IPA
           path: iCert7.ipa
+          if-no-files-found: error
           retention-days: 7
